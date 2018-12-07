@@ -50,6 +50,7 @@ public class EchoPulse_MainTeleOP extends LinearOpMode {
     private int limitStart = 0;
     private double rotPower = 0.75;
     private int s=0;
+    private boolean DEBUG = false;
 
     @Override
     public void runOpMode() {
@@ -58,11 +59,12 @@ public class EchoPulse_MainTeleOP extends LinearOpMode {
         telemetry.addData("IT", "FUCKING WORKED");
         telemetry.update();
 
-        motorSF = hardwareMap.get(DcMotor.class, "MotorSF");
-        motorDF = hardwareMap.get(DcMotor.class, "MotorDF");
-        motorDS = hardwareMap.get(DcMotor.class, "MotorDS");
-        motorSS = hardwareMap.get(DcMotor.class, "MotorSS");
-        motorCarlig = hardwareMap.get(DcMotor.class, "MotorCarlig");
+        EchoPulse_Parts parts = new EchoPulse_Parts(hardwareMap);
+        motorSF = parts.getMotorSF();
+        motorDF = parts.getMotorDF();
+        motorDS = parts.getMotorDS();
+        motorSS = parts.getMotorSS();
+        motorCarlig = parts.getMotorCarlig();
 
         motorSF.setDirection(DcMotor.Direction.FORWARD);
         motorDF.setDirection(DcMotor.Direction.FORWARD);
@@ -71,6 +73,25 @@ public class EchoPulse_MainTeleOP extends LinearOpMode {
         motorCarlig.setDirection(DcMotor.Direction.FORWARD);
         motorCarlig.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         motorCarlig.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        /**
+         * @return Controller Commands
+         *
+         * Gamepad#1
+         * Left Stick - Moves forward or backward
+         * Dpad Left|Right - Moves horizontally
+         * Left|Right Bumper - Steering on spot
+         * B - Change motors behaviour to 'float' or 'break'
+         * A - Enables/Disables Slow mode
+         *
+         * Gamepad#2
+         * A - Re-calculate hook limits
+         * X - Enables hook limits
+         * Y - Disables hook limits
+         * Left Bumper - Get down the hook
+         * Right Bumper - Lift the hook
+         */
+
 
         // Wait for the game to start (driver presses PLAY)
         runtime.reset();
@@ -89,12 +110,12 @@ public class EchoPulse_MainTeleOP extends LinearOpMode {
 
             double carligPower = 0.8;
 
-            if (gamepad2.a && motorCarlig.getCurrentPosition() <= -13000) {
+            if (gamepad2.a && motorCarlig.getCurrentPosition() <= -11000) {
                 limitEnd = -2618;
                 if (motorCarlig.getCurrentPosition() < limitEnd)
                     motorCarlig.setPower(carligPower);
                 else {
-                    limitEnd = -13000;
+                    limitEnd = -11000;
                 }
             }
 
@@ -116,47 +137,45 @@ public class EchoPulse_MainTeleOP extends LinearOpMode {
 
             // Telemetry
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("MotorSF: ", motorSF.getCurrentPosition());
-            telemetry.addData("MotorDF: ", motorDF.getCurrentPosition());
-            telemetry.addData("MotorDS: ", motorDS.getCurrentPosition());
-            telemetry.addData("MotorSS: ", motorSS.getCurrentPosition());
+            if (DEBUG) debug(sasiuPowerX);
             if (limitStart != 0 && limitEnd != -16300)
                 telemetry.addData("Limita Actualizata la : ", limitStart + " | " + limitEnd);
-
             telemetry.addData("Limite: ", useLimits ? "Acitvate" : "Dezactivate");
             telemetry.addData("MotorCarlig: ", motorCarlig.getCurrentPosition());
-            telemetry.addData("sasiuPowerX ", sasiuPowerX);
-            telemetry.addData("Directie (+ = stanga | - = dreapta) : " , s);
             telemetry.update();
 
             useCarlig(carligPower);
         }
     }
 
+    private void debug(double sasiuPowerX) {
+        telemetry.addData("MotorSF: ", motorSF.getCurrentPosition());
+        telemetry.addData("MotorDF: ", motorDF.getCurrentPosition());
+        telemetry.addData("MotorDS: ", motorDS.getCurrentPosition());
+        telemetry.addData("MotorSS: ", motorSS.getCurrentPosition());
+        telemetry.addData("sasiuPowerX ", sasiuPowerX);
+        telemetry.addData("Directie (+ = stanga | - = dreapta) : " , s);
+    }
+
     private void setLimits() {
-        if (gamepad2.y) {
+        if (gamepad2.y)
             useLimits = false;
-        }
 
-        if (gamepad2.x) {
+        if (gamepad2.x)
             useLimits = true;
-        }
 
-        if (gamepad2.a && motorCarlig.getCurrentPosition() != 0) {
+        if (gamepad2.a && motorCarlig.getCurrentPosition() != 0)
             limitStart = motorCarlig.getCurrentPosition();
-            limitEnd = motorCarlig.getCurrentPosition() - 13000;
-        }
-
+            limitEnd = motorCarlig.getCurrentPosition() - 11000;
     }
 
     private void implementSteering() {
-        if (gamepad1.dpad_left) {
+        if (gamepad1.dpad_left)
             setSteering("hleft", false);
-        }
 
-        if (gamepad1.dpad_right) {
+        if (gamepad1.dpad_right)
             setSteering("hright" , false);
-        }
+
         if (gamepad1.left_bumper) {
             if (speedDevider == 1)
                 setSteering("left", false);
@@ -180,10 +199,10 @@ public class EchoPulse_MainTeleOP extends LinearOpMode {
                     motorDS.setPower(rotPower);
                     motorSS.setPower(rotPower);
                 } else {
-                    motorSF.setPower(rotPower / 1.5);
-                    motorDF.setPower(rotPower / 1.5);
-                    motorDS.setPower(rotPower / 1.5);
-                    motorSS.setPower(rotPower / 1.5);
+                    motorSF.setPower(rotPower / 1.25);
+                    motorDF.setPower(rotPower / 1.25);
+                    motorDS.setPower(rotPower / 1.25);
+                    motorSS.setPower(rotPower / 1.25);
                 }
                 s++;
                 break;
@@ -194,10 +213,10 @@ public class EchoPulse_MainTeleOP extends LinearOpMode {
                     motorDS.setPower(-rotPower);
                     motorSS.setPower(-rotPower);
                 } else {
-                    motorSF.setPower(-rotPower / 1.5);
-                    motorDF.setPower(-rotPower / 1.5);
-                    motorDS.setPower(-rotPower / 1.5);
-                    motorSS.setPower(-rotPower / 1.5);
+                    motorSF.setPower(-rotPower / 1.25);
+                    motorDF.setPower(-rotPower / 1.25);
+                    motorDS.setPower(-rotPower / 1.25);
+                    motorSS.setPower(-rotPower / 1.25);
                 }
                 s--;
                 break;

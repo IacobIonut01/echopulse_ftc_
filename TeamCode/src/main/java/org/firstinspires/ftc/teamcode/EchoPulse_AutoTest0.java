@@ -1,8 +1,14 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.annotation.TargetApi;
+import android.graphics.Color;
+import android.os.Build;
+
 import com.qualcomm.hardware.bosch.BNO055IMU;
+import com.qualcomm.hardware.lynx.LynxI2cColorRangeSensor;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -16,28 +22,33 @@ public class EchoPulse_AutoTest0 extends LinearOpMode {
 
     private ElapsedTime runtime = new ElapsedTime();
     private DcMotor motorSF, motorDF, motorDS, motorSS, motorCarlig;
+    private LynxI2cColorRangeSensor cls;
     private int limitEnd;
     private int limitStart;
     double carligPower = 0.8;
+    private int step = 0;
     private BNO055IMU imu;
     private Orientation lastAngles = new Orientation();
     private double globalAngle, power = .30;
 
+    @TargetApi(Build.VERSION_CODES.O)
     @Override
     public void runOpMode() {
 
         telemetry.addData("Status", "Initialized");
-        telemetry.addData("Test0027", "God bless us");
+        telemetry.addData("Test0032", "God bless us");
         telemetry.update();
 
-        motorSF = hardwareMap.get(DcMotor.class, "MotorSF");
-        motorDF = hardwareMap.get(DcMotor.class, "MotorDF");
-        motorDS = hardwareMap.get(DcMotor.class, "MotorDS");
-        motorSS = hardwareMap.get(DcMotor.class, "MotorSS");
-        motorCarlig = hardwareMap.get(DcMotor.class, "MotorCarlig");
+        EchoPulse_Parts parts = new EchoPulse_Parts(hardwareMap);
+        motorSF = parts.getMotorSF();
+        motorDF = parts.getMotorDF();
+        motorDS = parts.getMotorDS();
+        motorSS = parts.getMotorSS();
+        motorCarlig = parts.getMotorCarlig();
+        cls = parts.getColorSensor();
+        imu = parts.getGyro();
         limitStart = motorCarlig.getCurrentPosition();
-        limitEnd = motorCarlig.getCurrentPosition() - 13000;
-        imu = hardwareMap.get(BNO055IMU.class, "imu");
+        limitEnd = motorCarlig.getCurrentPosition() - 11000;
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
         parameters.mode = BNO055IMU.SensorMode.IMU;
         parameters.angleUnit = BNO055IMU.AngleUnit.DEGREES;
@@ -53,7 +64,6 @@ public class EchoPulse_AutoTest0 extends LinearOpMode {
         motorDS.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         motorCarlig.setDirection(DcMotor.Direction.FORWARD);
         motorCarlig.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        motorCarlig.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         imu.initialize(parameters);
         telemetry.addData("Mode", "calibrating...");
         telemetry.update();
@@ -68,19 +78,146 @@ public class EchoPulse_AutoTest0 extends LinearOpMode {
         waitForStart();
         telemetry.addData("Mode", "Running");
         telemetry.update();
-        sleep(1000);
-        // TODO: Add func
+        sleep(500);
         while (opModeIsActive()) {
-            //move("forward");
-            if (motorCarlig.getCurrentPosition() < motorCarlig.getCurrentPosition() + 250)
-                motorCarlig.setPower(-power);
-            else
-                motorCarlig.setPower(0);
-
-            telemetry.addData("Carlig :", motorCarlig.getCurrentPosition());
+            if (cls.red() < 20 && cls.green() < 20 && cls.blue() < 20) telemetry.addData("Gri", 1);
+            else if (cls.red() > 255 && cls.green() > 255 && cls.blue() > 255)
+                telemetry.addData("Alb", 1);
+            else telemetry.addData("Galben", 1);
             telemetry.update();
         }
     }
+
+    /*
+     * Interactions
+     **/
+
+    private void rotate(int degrees) {
+        resetAngle();
+        if (degrees < 0) {   // turn right.
+            setSteering("right", power);
+        } else if (degrees > 0) {   // turn left.
+            setSteering("left", power);
+        } else return;
+        if (degrees < 0) {
+            // On right turn we have to get off zero first.
+            while (opModeIsActive() && getAngle() == 0) {
+            }
+
+            while (opModeIsActive() && getAngle() > degrees) {
+            }
+        } else    // left turn.
+            while (opModeIsActive() && getAngle() < degrees) {
+            }
+        stopAuto();
+        sleep(1000);
+        resetAngle();
+    }
+
+    @Deprecated
+    private void startAuto() {
+        switch (step) {
+            case 0:
+                if (motorCarlig.getCurrentPosition() > limitStart && motorCarlig.getCurrentPosition() < limitEnd) {
+                    motorCarlig.setPower(-carligPower);
+                } else {
+                    motorCarlig.setPower(0);
+                    step++;
+                }
+                break;
+            case 1:
+                if (motorCarlig.getCurrentPosition() < limitEnd && motorCarlig.getCurrentPosition() > limitStart) {
+                    motorCarlig.setPower(-carligPower);
+                } else {
+                    motorCarlig.setPower(0);
+                    step++;
+                }
+                break;
+            case 2:
+                setSteering("hleft", 0.8);
+                sleep(500);
+                stopAuto();
+                step++;
+                break;
+            case 3:
+                rotate(180);
+                step++;
+                break;
+            case 4:
+                move("forward");
+                sleep(1000);
+                step++;
+                stopAuto();
+                break;
+        }
+        telemetry.addData("Carlig :", motorCarlig.getCurrentPosition());
+        telemetry.update();
+    }
+
+    private void useCarlig(String direction) {
+        switch (direction.toLowerCase()) {
+            case "up":
+                if (motorCarlig.getCurrentPosition() >= limitStart) {
+                    motorCarlig.setPower(-carligPower);
+                }
+                break;
+            case "down":
+                if (motorCarlig.getCurrentPosition() < limitEnd) {
+                    motorCarlig.setPower(carligPower);
+                }
+                break;
+        }
+    }
+
+    private void move(String direction) {
+        switch (direction.toLowerCase()) {
+            case "forward":
+                motorSF.setPower(-power + checkDirection());
+                motorSS.setPower(-power + checkDirection());
+                motorDF.setPower(power);
+                motorDS.setPower(power);
+                break;
+            case "backward":
+                motorSF.setPower(power);
+                motorSS.setPower(power);
+                motorDF.setPower(-power + checkDirection());
+                motorDS.setPower(-power + checkDirection());
+                break;
+        }
+    }
+
+    private void setSteering(String direction, double rotPower) {
+        switch (direction.toLowerCase()) {
+            case "left":
+                motorSF.setPower(rotPower);
+                motorDF.setPower(rotPower);
+                motorDS.setPower(rotPower);
+                motorSS.setPower(rotPower);
+                break;
+            case "right":
+                motorSF.setPower(-rotPower);
+                motorDF.setPower(-rotPower);
+                motorDS.setPower(-rotPower);
+                motorSS.setPower(-rotPower);
+                break;
+            case "hleft":
+                motorSF.setPower(rotPower);
+                motorDF.setPower(rotPower);
+                motorDS.setPower(-rotPower);
+                motorSS.setPower(-rotPower);
+                break;
+            case "hright":
+                motorSF.setPower(-rotPower);
+                motorDF.setPower(-rotPower);
+                motorDS.setPower(rotPower);
+                motorSS.setPower(rotPower);
+                break;
+        }
+    }
+
+    /*
+     * System Management
+     **/
 
     private void stopAuto() {
         motorDS.setPower(0);
@@ -118,10 +255,6 @@ public class EchoPulse_AutoTest0 extends LinearOpMode {
         return globalAngle;
     }
 
-    /**
-     * See if we are moving in a straight line and if not return a power correction value.
-     * @return Power adjustment, + is adjust left - is adjust right.
-     */
     private double checkDirection() {
         // The gain value determines how sensitive the correction is to direction changes.
         // You will have to experiment with your robot to get small smooth direction changes
@@ -134,114 +267,9 @@ public class EchoPulse_AutoTest0 extends LinearOpMode {
             correction = 0;             // no adjustment.
         else
             correction = -angle;        // reverse sign of angle for correction.\
-        correction*= gain;
+        correction *= gain;
 
         return correction;
-    }
-
-    /**
-     * Rotate left or right the number of degrees. Does not support turning more than 180 degrees.
-     * @param degrees Degrees to turn, + is left - is right
-     */
-    private void rotate(int degrees) {
-        resetAngle();
-        if (degrees < 0)
-        {   // turn right.
-            setSteering("right", false, power);
-        }
-        else if (degrees > 0)
-        {   // turn left.
-            setSteering("left", false, power);
-        }
-        else return;
-        if (degrees < 0)
-        {
-            // On right turn we have to get off zero first.
-            while (opModeIsActive() && getAngle() == 0) {}
-
-            while (opModeIsActive() && getAngle() > degrees) {}
-        }
-        else    // left turn.
-            while (opModeIsActive() && getAngle() < degrees) {}
-        stopAuto();
-        sleep(1000);
-        resetAngle();
-    }
-
-    private void startAuto() {
-        //rotate(90);
-        move("forward");
-        sleep(2500);
-        stopAuto();
-    }
-
-    private void useCarlig(boolean up) {
-        if (up && motorCarlig.getCurrentPosition() < limitStart) {
-            motorCarlig.setPower(carligPower);
-        }
-        else if (!up && motorCarlig.getCurrentPosition() > limitEnd) {
-            motorCarlig.setPower(-carligPower);
-        }
-    }
-
-    private void move(String direction) {
-        switch (direction.toLowerCase()) {
-            case "forward":
-                motorSF.setPower(-power + checkDirection());
-                motorSS.setPower(-power + checkDirection());
-                motorDF.setPower(power);
-                motorDS.setPower(power);
-                break;
-            case "backward":
-                motorSF.setPower(power);
-                motorSS.setPower(power);
-                motorDF.setPower(-power + checkDirection());
-                motorDS.setPower(-power + checkDirection());
-                break;
-        }
-    }
-
-    private void setSteering(String direction, boolean useDivider, double rotPower) {
-        switch (direction.toLowerCase()) {
-            case "left":
-                if (!useDivider) {
-                    motorSF.setPower(rotPower);
-                    motorDF.setPower(rotPower);
-                    motorDS.setPower(rotPower);
-                    motorSS.setPower(rotPower);
-                } else {
-                    motorSF.setPower(rotPower / 1.5);
-                    motorDF.setPower(rotPower / 1.5);
-                    motorDS.setPower(rotPower / 1.5);
-                    motorSS.setPower(rotPower / 1.5);
-                }
-                break;
-            case "right":
-                if (!useDivider) {
-                    motorSF.setPower(-rotPower);
-                    motorDF.setPower(-rotPower);
-                    motorDS.setPower(-rotPower);
-                    motorSS.setPower(-rotPower);
-                } else {
-                    motorSF.setPower(-rotPower / 1.5);
-                    motorDF.setPower(-rotPower / 1.5);
-                    motorDS.setPower(-rotPower / 1.5);
-                    motorSS.setPower(-rotPower / 1.5);
-                }
-                break;
-            case "hleft":
-                motorSF.setPower(rotPower);
-                motorDF.setPower(rotPower);
-                motorDS.setPower(-rotPower);
-                motorSS.setPower(-rotPower);
-                break;
-            case "hright":
-                motorSF.setPower(-rotPower);
-                motorDF.setPower(-rotPower);
-                motorDS.setPower(rotPower);
-                motorSS.setPower(rotPower);
-                break;
-        }
     }
 
 }

@@ -1,4 +1,4 @@
-.gradle
-.idea
-TeamCode/build
-FtcRobotController/build
+/.gradle
+/.idea
+/TeamCode/build
+/FtcRobotController/build
