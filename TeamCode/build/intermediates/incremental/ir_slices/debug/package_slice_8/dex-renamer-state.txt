@@ -1,4 +1,4 @@
-#Fri Nov 30 15:13:17 EET 2018
-base.0=D\:\\Iut\\FTC_App-master\\TeamCode\\build\\intermediates\\transforms\\dexMerger\\debug\\8
+#Sat Feb 09 13:15:12 EET 2019
+base.0=C\:\\Users\\EchoPulse\\Desktop\\FTC_App-master\\TeamCode\\build\\intermediates\\transforms\\dexMerger\\debug\\8
 path.0=classes.dex
 renamed.0=classes.dex
